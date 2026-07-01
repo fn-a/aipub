@@ -1,0 +1,10 @@
+[package]
+name = "aipub"
+version = "0.0.0"
+edition = "2024"
+authors = ["fn-a <mr.fna.co@gmail.com>"]
+repository = "https://github.com/fn-a/aipub"
+description = "AIP - Agent Interconnection Protocol"
+license = "MIT"
+
+[dependencies]
