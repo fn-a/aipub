@@ -43,8 +43,8 @@
 ## 使用示例
 
 ```rust
-use discovery::{DiscoveryServiceImpl, DiscoveryConfig, MemoryStorage, SimpleMatcher};
-use protocols::adp::DiscoveryRequest;
+use aipub::discovery::{DiscoveryServiceImpl, DiscoveryConfig, MemoryStorage, SimpleMatcher};
+use aipub::protocols::adp::DiscoveryRequest;
 
 #[tokio::main]
 async fn main() {

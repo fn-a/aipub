@@ -1,9 +1,11 @@
 [package]
 name = "aipub-authorize"
-version.workspace = true
+version = "0.0.1"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
+description = "Authentication and group ACL service for group-based agent interaction patterns"
 
 [dependencies]
 protocols = { workspace = true }

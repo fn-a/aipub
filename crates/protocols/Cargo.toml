@@ -1,9 +1,11 @@
 [package]
 name = "aipub-protocols"
-version.workspace = true
+version = "0.0.1"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
+description = "Core Rust protocol library implementing the ACPs (Agent Collaboration Protocols) specification"
 
 [dependencies]
 serde = { workspace = true }

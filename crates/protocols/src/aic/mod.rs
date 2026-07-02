@@ -19,7 +19,7 @@
 //! ## 使用示例
 //!
 //! ```rust
-//! use protocols::aic::{validate_aic_format, parse_aic, AicInfo};
+//! use aipub::protocols::aic::{validate_aic_format, parse_aic, AicInfo};
 //!
 //! // 基础格式验证
 //! let aic = "1.2.156.3088.1.K9.12345.E789ABCDEF.000000000.2353";
@@ -151,7 +151,7 @@ impl fmt::Display for AicInfo {
 /// # 示例
 ///
 /// ```rust
-/// use protocols::aic::validate_aic_format;
+/// use aipub::protocols::aic::validate_aic_format;
 ///
 /// let aic = "1.2.156.3088.1.K9.12345.E789ABCDEF.000000000.2353";
 /// match validate_aic_format(aic) {

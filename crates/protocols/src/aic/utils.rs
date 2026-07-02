@@ -49,7 +49,7 @@ pub fn is_base36(s: &str) -> bool {
 /// # 示例
 ///
 /// ```rust
-/// use protocols::aic::base36_encode;
+/// use aipub::protocols::aic::base36_encode;
 ///
 /// assert_eq!(base36_encode(0, 0), "0");
 /// assert_eq!(base36_encode(35, 0), "Z");
@@ -98,7 +98,7 @@ pub fn base36_encode(num: u64, length: usize) -> String {
 /// # 示例
 ///
 /// ```rust
-/// use protocols::aic::base36_decode;
+/// use aipub::protocols::aic::base36_decode;
 ///
 /// assert_eq!(base36_decode("0").unwrap(), 0);
 /// assert_eq!(base36_decode("Z").unwrap(), 35);

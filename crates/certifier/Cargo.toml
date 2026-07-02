@@ -1,9 +1,11 @@
 [package]
 name = "aipub-certifier"
-version.workspace = true
+version = "0.0.1"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
+description = "Agent certificate authority service based on the ACME protocol"
 
 [dependencies]
 protocols = { workspace = true }

@@ -10,7 +10,7 @@ use sha2::{Sha256, Digest};
 /// # 示例
 ///
 /// ```rust
-/// use protocols::aic::AicValidator;
+/// use aipub::protocols::aic::AicValidator;
 ///
 /// let validator = AicValidator::new(Some(b"\x12\x34".to_vec()));
 /// let aic = "1.2.156.3088.1.K9.12345.E789ABCDEF.000000000.2353";

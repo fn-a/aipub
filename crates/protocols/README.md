@@ -9,7 +9,7 @@
 智能体全局唯一身份标识符，采用 10 级 OID 结构。
 
 ```rust
-use protocols::aic::{validate_aic_format, parse_aic, AicInfo, AicValidator};
+use aipub::protocols::aic::{validate_aic_format, parse_aic, AicInfo, AicValidator};
 
 // 基础格式验证
 let aic = "1.2.156.3088.1.K9.12345.E789ABCDEF.000000000.2353";
@@ -45,7 +45,7 @@ if validator.validate(aic, true) {
 完整描述智能体的身份信息、功能能力、技术特性和服务接口。
 
 ```rust
-use protocols::acs::{
+use aipub::protocols::acs::{
     AgentCapabilitySpec, AgentProvider, AgentCapabilities,
     AgentSkill, SecurityScheme, MutualTlsSecurityScheme
 };
@@ -108,7 +108,7 @@ let json = acs.to_json()?;
 定义智能体之间的交互模式，包括任务命令、任务结果等。
 
 ```rust
-use protocols::aip::{
+use aipub::protocols::aip::{
     TaskCommand, TaskResult, TaskState, TaskCommandType,
     DataItem, TextDataItem
 };
@@ -158,7 +158,7 @@ let result = TaskResult::new(
 定义智能体发现流程，支持查询、过滤和跨域发现。
 
 ```rust
-use protocols::adp::{
+use aipub::protocols::adp::{
     DiscoveryRequest, DiscoveryResponse, DiscoveryFilter,
     FilterCondition, QueryType
 };

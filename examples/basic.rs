@@ -2,7 +2,7 @@
 
 use aipub::{
     protocols::{
-        aic::{validate_aic_format, parse_aic, AicValidator},
+        aic::{validate_aic_format, AicValidator},
         acs::{AgentCapabilitySpec, AgentProvider, AgentCapabilities, AgentSkill, SecurityScheme, MutualTlsSecurityScheme},
         aip::{TaskCommand, TaskResult, TaskState, TaskStatus},
         adp::{DiscoveryRequest, DiscoveryResponse, DiscoveryFilter, FilterCondition},

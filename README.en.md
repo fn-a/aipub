@@ -30,9 +30,8 @@ This project is a Rust implementation based on the ACPs (Agent Collaboration Pro
 
 ### Add Dependency
 
-```toml
-[dependencies]
-aipub = "0.1.0"
+```bash
+cargo add aipub
 ```
 
 ### Basic Usage
@@ -65,31 +64,6 @@ cargo run --example basic
 
 # Run tests
 cargo test
-```
-
-Example output:
-```
-AIP Agent Interconnection Protocol v0.1.0
-Protocol version: 02.01
-AIC OID prefix: 1.2.156.3088
-
-=== AIC Example ===
-✓ AIC format valid
-  - version: 1
-  - ARSP: K9
-  - is_ontology: true
-
-=== ACS Example ===
-✓ ACS validation passed
-✓ ACS serialization successful (689 bytes)
-
-=== AIP Example ===
-✓ Task command created
-✓ Task result created
-
-=== ADP Example ===
-✓ Discovery request created
-✓ Discovery response created
 ```
 
 ## Project Structure

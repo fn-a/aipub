@@ -13,9 +13,9 @@
 //! ## 快速开始
 //!
 //! ```rust
-//! use protocols::aic::validate_aic_format;
-//! use protocols::acs::AgentCapabilitySpec;
-//! use protocols::adp::DiscoveryRequest;
+//! use aipub::protocols::aic::validate_aic_format;
+//! use aipub::protocols::acs::AgentCapabilitySpec;
+//! use aipub::protocols::adp::DiscoveryRequest;
 //!
 //! // 验证 AIC 格式
 //! let aic = "1.2.156.3088.1.K9.12345.E789ABCDEF.000000000.2353";

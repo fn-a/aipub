@@ -30,9 +30,8 @@
 
 ### 添加依赖
 
-```toml
-[dependencies]
-aipub = "0.1.0"
+```bash
+cargo add aipub
 ```
 
 ### 基本使用
@@ -65,31 +64,6 @@ cargo run --example basic
 
 # 运行测试
 cargo test
-```
-
-示例输出：
-```
-AIP 智能体互联协议 v0.1.0
-协议版本: 02.01
-AIC OID 前缀: 1.2.156.3088
-
-=== AIC 示例 ===
-✓ AIC 格式有效
-  - 版本: 1
-  - ARSP: K9
-  - 是否为本体: true
-
-=== ACS 示例 ===
-✓ ACS 验证通过
-✓ ACS 序列化成功 (689 bytes)
-
-=== AIP 示例 ===
-✓ 创建任务命令
-✓ 创建任务结果
-
-=== ADP 示例 ===
-✓ 创建发现请求
-✓ 创建发现响应
 ```
 
 ## 项目结构

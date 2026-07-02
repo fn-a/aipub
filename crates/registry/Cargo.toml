@@ -1,9 +1,11 @@
 [package]
 name = "aipub-registry"
-version.workspace = true
+version = "0.0.1"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
+description = "Agent registration service based on the ATR (Agent Trust Registry) protocol"
 
 [dependencies]
 protocols = { workspace = true }
