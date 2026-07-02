@@ -10,10 +10,10 @@ keywords = ["agent", "ai", "protocol", "acps", "aip"]
 
 [dependencies]
 protocols = { workspace = true }
-discovery = { path = "crates/discovery" }
-registry = { path = "crates/registry" }
-certifier = { path = "crates/certifier" }
-authorize = { path = "crates/authorize" }
+discovery = { path = "crates/discovery", package = "aipub-discovery" }
+registry = { path = "crates/registry", package = "aipub-registry" }
+certifier = { path = "crates/certifier", package = "aipub-certifier" }
+authorize = { path = "crates/authorize", package = "aipub-authorize" }
 
 [dev-dependencies]
 tokio = { version = "^1.52", features = ["full"] }
@@ -59,4 +59,4 @@ tracing = "^0.1"
 tracing-subscriber = "^0.3"
 reqwest = { version = "^0.13", features = ["json"] }
 
-protocols = { path = "crates/protocols" }
+protocols = { path = "crates/protocols", package = "aipub-protocols" }

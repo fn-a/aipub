@@ -1,5 +1,5 @@
 [package]
-name = "authorize"
+name = "aipub-authorize"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

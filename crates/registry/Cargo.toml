@@ -1,5 +1,5 @@
 [package]
-name = "registry"
+name = "aipub-registry"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

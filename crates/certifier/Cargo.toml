@@ -1,5 +1,5 @@
 [package]
-name = "certifier"
+name = "aipub-certifier"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
