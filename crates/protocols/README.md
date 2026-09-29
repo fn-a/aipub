@@ -9,22 +9,25 @@
 智能体全局唯一身份标识符，采用 10 级 OID 结构。
 
 ```rust
-use aipub::protocols::aic::{validate_aic_format, parse_aic, AicInfo, AicValidator};
+use aipub::protocols::aic::{validate_aic_format, AicValidator, AicGenerator};
 
-// 基础格式验证
-let aic = "1.2.156.3088.1.K9.12345.E789ABCDEF.000000000.2353";
-if let Ok(info) = validate_aic_format(aic) {
-    println!("AIC 有效");
-    println!("是否为本体: {}", info.is_ontology());
-    println!("ARSP: {}", info.arsp);
-}
+// 生成 AIC（SALT 由各 ARSP 内部维护，此处示例为 0x00494F41）
+let generator = AicGenerator::from_hex_salt("0x00494F41").unwrap();
+let aic = generator.generate_entity_aic().unwrap();
 
-// 完整验证（包含 CRC）
-let validator = AicValidator::from_hex("1234").unwrap();
-if validator.validate(aic, true) {
-    println!("AIC 完全有效");
-}
+// 格式验证（不需要 SALT）
+let info = validate_aic_format(&aic).unwrap();
+println!("是否为本体: {}", info.is_ontology());
+println!("ARSP: {}", info.arsp);
+
+// 完整验证（含 CRC-16/CCITT-FALSE 校验）
+let mut validator = AicValidator::new(Some(generator.salt().to_vec()));
+assert!(validator.validate(&aic, true));
 ```
+
+> 文档中出现的 AIC 字面量均按 SALT `0x00494F41` 计算校验码，可直接通过完整校验；
+> 例如本体 AIC `1.2.156.3088.1.0001.00001.ABC123.000000.0M9Y`、
+> 实体 AIC `1.2.156.3088.1.0001.00001.ABC123.000001.176F`。
 
 **AIC 结构说明：**
 
@@ -45,11 +48,11 @@ if validator.validate(aic, true) {
 完整描述智能体的身份信息、功能能力、技术特性和服务接口。
 
 ```rust
+use std::collections::HashMap;
 use aipub::protocols::acs::{
     AgentCapabilitySpec, AgentProvider, AgentCapabilities,
     AgentSkill, SecurityScheme, MutualTlsSecurityScheme
 };
-use std::collections::HashMap;
 
 let mut security_schemes = HashMap::new();
 security_schemes.insert(
@@ -62,7 +65,7 @@ security_schemes.insert(
 );
 
 let acs = AgentCapabilitySpec {
-    aic: "1.2.156.3088.1.K9.12345.E789ABCDEF.000000000.2353".to_string(),
+    aic: "1.2.156.3088.1.0001.00001.ABC123.000000.0M9Y".to_string(),
     active: true,
     last_modified_time: "2025-03-15T16:30:00+08:00".to_string(),
     protocol_version: "02.01".to_string(),
@@ -158,11 +161,11 @@ let result = TaskResult::new(
 定义智能体发现流程，支持查询、过滤和跨域发现。
 
 ```rust
+use serde_json::json;
 use aipub::protocols::adp::{
     DiscoveryRequest, DiscoveryResponse, DiscoveryFilter,
     FilterCondition, QueryType
 };
-use serde_json::json;
 
 // 创建发现请求
 let request = DiscoveryRequest::new()
@@ -195,20 +198,37 @@ if let Some(result) = response.result {
 - `trending`: 热门查询
 - `filtered`: 过滤查询
 
-**过滤运算符：**
+**过滤运算符（共 35 种）：**
 
-- 等值: `eq`, `ne`
-- 比较: `gt`, `gte`, `lt`, `lte`, `between`
+- 等值/存在: `eq`, `ne`, `exists`
+- 比较: `gt`, `gte`, `lt`, `lte`, `between`（闭区间）
 - 集合: `in`, `nin`
-- 字符串: `contains`, `startsWith`, `endsWith`
-- 数组: `anyOf`, `allOf`, `noneOf`, `size`
+- 字符串: `contains`, `notContains`, `startsWith`, `endsWith`（默认大小写不敏感）
+- 大小写敏感变体: `eqCs`, `neCs`, `inCs`, `ninCs`, `containsCs`, `notContainsCs`, `startsWithCs`, `endsWithCs`
+- 数组: `anyOf`, `allOf`, `noneOf`, `size`, `sizeGt`, `sizeGte`, `sizeLt`, `sizeLte`
+- 对象: `hasKey`, `hasNoKey`, `hasAnyKey`, `hasAllKeys`
+
+求值语义：
+
+- 字段路径支持点号嵌套（如 `skills.tags`），遇到数组时对每个元素求值，任一命中即为命中；
+- 否定运算符（`ne`/`nin`/`notContains`/`noneOf`/`hasNoKey`）定义为对应正向运算符取反，
+  因此在数组字段上表示「没有任何元素命中」；
+- `size*` 直接作用于数组/字符串/对象本身；`exists` 表示「存在且非空」。
+
+### 其它模块
+
+- **ATR** (`protocols::atr`)：EAB 的 HMAC-SHA256 签名/校验、吊销原因码、
+  证书用途与有效期常量
+- **DSP** (`protocols::dsp`)：变更记录（`ChangeEntry`）与变更流（`ChangeFeed`），
+  供注册服务到发现服务的增量同步
 
 ## 特性
 
-- ✅ 完整的 AIC 验证和解析（包含 Base36 编解码和 CRC 校验）
-- ✅ ACS 数据模型和验证
-- ✅ AIP 任务交互模型
-- ✅ ADP 发现协议和过滤条件
+- ✅ AIC 生成与解析（Base36 编解码、CRC-16/CCITT-FALSE 校验、本体/实体派生）
+- ✅ ACS 数据模型与校验（protocolVersion、技能、mutualTLS 端点、URL scheme、MQ 版本正则）
+- ✅ AIP 任务交互模型（任务状态机、TaskManager、JSON-RPC 请求/响应与错误码）
+- ✅ ADP 发现协议（请求校验、35 种过滤运算符求值、错误码、转发链/扇出校验）
+- ✅ ATR 支撑算法（EAB HMAC）与 DSP 变更流
 - ✅ 完整的序列化/反序列化支持
 - ✅ 类型安全的 Rust 实现
 

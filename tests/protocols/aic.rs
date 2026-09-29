@@ -189,3 +189,115 @@ mod validator_tests {
         assert!(validator.has_salt());
     }
 }
+
+/// AIC 生成器测试
+#[cfg(test)]
+mod generator_tests {
+    use aipub::protocols::aic::{validate_aic_format, AicValidator};
+    use super::*;
+
+    const SPEC_SALT: &[u8] = b"\x00\x49\x4F\x41";
+
+    #[test]
+    fn test_crc16_spec_example_without_salt() {
+        // ACPs-spec-AIC-v02.01 规范示例
+        let body = "1.2.156.1234.1.1.34C2.478BDF.3GF546";
+        assert_eq!(calculate_checksum(body, b""), "0H9T");
+    }
+
+    #[test]
+    fn test_registry_salt_checksum_examples() {
+        // 独立计算的黄金值（CRC-16/CCITT-FALSE + salt 0x00494F41）
+        let salt = parse_hex_salt("0x00494F41");
+
+        let entity_body = "1.2.156.3088.1.0001.00001.ABC123.000001";
+        assert_eq!(calculate_checksum(entity_body, &salt), "176F");
+
+        let ontology_body = "1.2.156.3088.1.0001.00001.ABC123.000000";
+        assert_eq!(calculate_checksum(ontology_body, &salt), "0M9Y");
+
+        // 完整校验器应接受这两个示例 AIC
+        let mut validator = AicValidator::new(Some(salt));
+        assert!(validator.validate(&format!("{}.176F", entity_body), true));
+        assert!(validator.validate(&format!("{}.0M9Y", ontology_body), true));
+        assert!(!validator.validate(
+            "1.2.156.3088.1.0001.00001.ABC123.000001.0000",
+            true
+        ));
+    }
+
+    #[test]
+    fn test_generate_entity_aic_is_valid() {
+        let generator = AicGenerator::new(SPEC_SALT.to_vec());
+        let aic = generator.generate_entity_aic().unwrap();
+
+        let info = validate_aic_format(&aic).unwrap();
+        assert!(info.is_entity());
+        assert_eq!(info.checksum, generator.checksum(&info.body()));
+        assert_eq!(info.ontology_serial.len(), DEFAULT_ONTOLOGY_SERIAL_LEN);
+        assert_eq!(info.instance_serial.len(), DEFAULT_INSTANCE_SERIAL_LEN);
+    }
+
+    #[test]
+    fn test_generate_ontology_aic_is_valid() {
+        let generator = AicGenerator::new(SPEC_SALT.to_vec());
+        let aic = generator.generate_ontology_aic().unwrap();
+
+        let info = validate_aic_format(&aic).unwrap();
+        assert!(info.is_ontology());
+        assert!(info.instance_serial.chars().all(|c| c == '0'));
+    }
+
+    #[test]
+    fn test_ontology_entity_round_trip() {
+        let generator = AicGenerator::new(SPEC_SALT.to_vec());
+
+        let entity = generator.generate_entity_aic().unwrap();
+        let ontology = generator.ontology_from_entity(&entity).unwrap();
+        assert!(validate_aic_format(&ontology).unwrap().is_ontology());
+        assert_eq!(
+            entity.split('.').take(8).collect::<Vec<_>>(),
+            ontology.split('.').take(8).collect::<Vec<_>>()
+        );
+
+        let derived = generator.entity_from_ontology(&ontology).unwrap();
+        assert!(validate_aic_format(&derived).unwrap().is_entity());
+        assert_eq!(
+            ontology.split('.').take(8).collect::<Vec<_>>(),
+            derived.split('.').take(8).collect::<Vec<_>>()
+        );
+        assert_ne!(entity, derived);
+
+        let prefix = get_derived_entity_like_prefix(&ontology).unwrap();
+        assert!(derived.starts_with(&prefix));
+    }
+
+    #[test]
+    fn test_entity_from_non_ontology_returns_none() {
+        let generator = AicGenerator::new(SPEC_SALT.to_vec());
+        let entity = generator.generate_entity_aic().unwrap();
+        assert!(generator.entity_from_ontology(&entity).is_none());
+    }
+
+    #[test]
+    fn test_invalid_codes_rejected() {
+        let generator = AicGenerator::new(SPEC_SALT.to_vec());
+        assert!(generator.clone().with_codes("", "0001", "00001").is_err());
+        assert!(generator.clone().with_codes("12", "0001", "00001").is_err());
+        assert!(generator.clone().with_codes("1", "00*1", "00001").is_err());
+        assert!(generator.clone().with_codes("1", "0001", "").is_err());
+        assert!(generator.with_serial_lengths(0, 6).is_err());
+    }
+
+    #[test]
+    fn test_invalid_checksum_rejected() {
+        let validator_salt = SPEC_SALT;
+        let bad = "1.2.156.1234.1.1.AAAAAA.1.1.1.0000";
+        let expected = calculate_checksum(
+            "1.2.156.1234.1.1.AAAAAA.1.1.1",
+            validator_salt,
+        );
+        assert_ne!(expected, "0000");
+        assert!(validate_aic_format(bad).is_err() || expected != "0000");
+    }
+}

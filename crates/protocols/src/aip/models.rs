@@ -1,8 +1,8 @@
-//! AIP 数据模型
+﻿//! AIP 数据模型
 
-use super::{TaskCommandType, TaskState};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use super::TaskState;
 
 /// 数据项联合类型
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

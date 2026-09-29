@@ -1,4 +1,4 @@
-//! # AIC - Agent Identity Code (智能体身份码)
+﻿//! # AIC - Agent Identity Code (智能体身份码)
 //!
 //! 基于 ACPs-spec-AIC-v02.01 规范实现的智能体身份码工具模块。
 //!
@@ -19,7 +19,7 @@
 //! ## 使用示例
 //!
 //! ```rust
-//! use aipub::protocols::aic::{validate_aic_format, parse_aic, AicInfo};
+//! use protocols::aic::{validate_aic_format, parse_aic, AicInfo};
 //!
 //! // 基础格式验证
 //! let aic = "1.2.156.3088.1.K9.12345.E789ABCDEF.000000000.2353";
@@ -35,16 +35,18 @@
 //! }
 //! ```
 
+use std::fmt;
+use serde::{Deserialize, Serialize};
+
 mod validator;
 mod utils;
 mod constants;
+mod generator;
 
 pub use validator::*;
 pub use utils::*;
 pub use constants::*;
-
-use serde::{Deserialize, Serialize};
-use std::fmt;
+pub use generator::*;
 
 /// AIC 解析结果
 ///
@@ -151,7 +153,7 @@ impl fmt::Display for AicInfo {
 /// # 示例
 ///
 /// ```rust
-/// use aipub::protocols::aic::validate_aic_format;
+/// use protocols::aic::validate_aic_format;
 ///
 /// let aic = "1.2.156.3088.1.K9.12345.E789ABCDEF.000000000.2353";
 /// match validate_aic_format(aic) {
@@ -160,6 +162,22 @@ impl fmt::Display for AicInfo {
 /// }
 /// ```
 pub fn validate_aic_format(aic: &str) -> Result<AicInfo, String> {
+    validate_aic_format_with_prefix(aic, AIC_OID_PREFIX)
+}
+
+/// 验证 AIC 格式，并指定期望的 OID 前缀
+///
+/// 与 [`validate_aic_format`] 相同，但允许使用非默认前缀，
+/// 便于校验规范示例（如 `1.2.156.1234`）或其它 OID 分支。
+///
+/// # 参数
+///
+/// - `aic`: 待验证的 AIC 字符串
+/// - `expected_prefix`: 期望的 OID 前缀，空字符串表示不校验前缀
+pub fn validate_aic_format_with_prefix(
+    aic: &str,
+    expected_prefix: &str,
+) -> Result<AicInfo, String> {
     if aic.trim().is_empty() {
         return Err("AIC 不能为空".to_string());
     }
@@ -171,13 +189,22 @@ pub fn validate_aic_format(aic: &str) -> Result<AicInfo, String> {
         return Err(format!("AIC 必须包含 10 段，当前为 {} 段", parts.len()));
     }
     
+    if parts.iter().any(|p| p.is_empty()) {
+        return Err("AIC 不允许存在空段".to_string());
+    }
+    
     // 验证前缀（1-4级）
     let prefix = format!("{}.{}.{}.{}", parts[0], parts[1], parts[2], parts[3]);
-    if prefix != AIC_OID_PREFIX {
-        return Err(format!(
-            "前缀不匹配，期望 {}，实际 {}",
-            AIC_OID_PREFIX, prefix
-        ));
+    if !expected_prefix.is_empty() {
+        let expected_parts: Vec<&str> = expected_prefix.split('.').collect();
+        let actual_parts: Vec<&str> = parts.iter().take(expected_parts.len()).copied().collect();
+        if actual_parts != expected_parts {
+            return Err(format!(
+                "前缀不匹配，期望 {}，实际 {}",
+                expected_prefix,
+                actual_parts.join(".")
+            ));
+        }
     }
     
     // 验证 1-4 级为纯数字

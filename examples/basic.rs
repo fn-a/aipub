@@ -1,5 +1,7 @@
 //! AIP 智能体互联协议使用示例
 
+use std::collections::HashMap;
+use serde_json::json;
 use aipub::{
     protocols::{
         aic::{validate_aic_format, AicValidator},
@@ -7,12 +9,11 @@ use aipub::{
         aip::{TaskCommand, TaskResult, TaskState, TaskStatus},
         adp::{DiscoveryRequest, DiscoveryResponse, DiscoveryFilter, FilterCondition},
     },
-    PROTOCOL_VERSION, AIC_OID_PREFIX,
+    PROTOCOL_VERSION, AIC_OID_PREFIX, VERSION,
 };
-use std::collections::HashMap;
 
 fn main() {
-    println!("AIP 智能体互联协议 v{}", aipub::VERSION);
+    println!("AIP 智能体互联协议 v{}", VERSION);
     println!("协议版本: {}", PROTOCOL_VERSION);
     println!("AIC OID 前缀: {}", AIC_OID_PREFIX);
     println!();
@@ -182,7 +183,7 @@ fn example_adp() {
         .with_limit(10)
         .with_filter(
             DiscoveryFilter::and(vec![
-                FilterCondition::eq("active", serde_json::json!(true)),
+                FilterCondition::eq("active", json!(true)),
                 FilterCondition::contains("name", "北京"),
             ])
         );

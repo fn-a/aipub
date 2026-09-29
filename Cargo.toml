@@ -8,6 +8,10 @@ description = "AIP (Agent Interconnection Protocol) - A Rust Implementation Base
 license = "MIT"
 keywords = ["agent", "ai", "protocol", "acps", "aip"]
 
+[lib]
+name = "aipub"
+path = "src/lib.rs"
+
 [dependencies]
 protocols = { workspace = true }
 discovery = { path = "crates/discovery", package = "aipub-discovery", version = "0.0.2" }
@@ -19,10 +23,17 @@ authorize = { path = "crates/authorize", package = "aipub-authorize", version = 
 tokio = { version = "^1.52", features = ["full"] }
 tokio-test = "^0.4"
 serde_json = "^1.0"
+base64 = "^0.22"
+uuid = { version = "^1.23", features = ["v4"] }
+hex = "^0.4"
 
 [[example]]
 name = "basic"
 path = "examples/basic.rs"
+
+[[example]]
+name = "e2eflow"
+path = "examples/e2eflow.rs"
 
 [workspace]
 resolver = "2"

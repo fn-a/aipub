@@ -2,8 +2,9 @@
 //!
 //! 测试智能体能力描述的数据模型、验证、序列化等功能
 
-use aipub::protocols::acs::*;
 use std::collections::HashMap;
+use serde_json::{to_string, from_str};
+use aipub::protocols::acs::*;
 
 #[cfg(test)]
 mod tests {
@@ -207,10 +208,10 @@ mod security_tests {
             x_ca_challenge_base_url: None,
         });
 
-        let json = serde_json::to_string(&scheme).unwrap();
+        let json = to_string(&scheme).unwrap();
         assert!(json.contains("\"type\":\"mutualTLS\""));
 
-        let deserialized: SecurityScheme = serde_json::from_str(&json).unwrap();
+        let deserialized: SecurityScheme = from_str(&json).unwrap();
         assert_eq!(scheme, deserialized);
     }
 }
@@ -234,10 +235,189 @@ mod mq_protocol_tests {
     #[test]
     fn test_mq_protocol_serialization() {
         let mqtt = MqProtocolVersion::Mqtt50;
-        let json = serde_json::to_string(&mqtt).unwrap();
+        let json = to_string(&mqtt).unwrap();
         assert_eq!(json, "\"mqtt:5.0\"");
 
-        let deserialized: MqProtocolVersion = serde_json::from_str(&json).unwrap();
+        let deserialized: MqProtocolVersion = from_str(&json).unwrap();
         assert_eq!(mqtt, deserialized);
+    }
+}
+
+/// ACS 能力描述校验测试
+#[cfg(test)]
+mod validation_tests {
+    use std::collections::HashMap;
+    use aipub::protocols::acs::{AgentCapabilities, AgentProvider, AgentSkill, MqProtocolVersion, MutualTlsSecurityScheme};
+    use super::*;
+
+    fn base_acs() -> AgentCapabilitySpec {
+        AgentCapabilitySpec {
+            aic: "1.2.156.3088.1.0001.00001.ABC123.000001.0H9T".to_string(),
+            active: true,
+            last_modified_time: "2025-03-15T16:30:00+08:00".to_string(),
+            protocol_version: "02.01".to_string(),
+            name: "北京旅游助手".to_string(),
+            description: "提供北京旅游规划服务".to_string(),
+            version: "1.0.0".to_string(),
+            icon_url: None,
+            documentation_url: None,
+            web_app_url: None,
+            provider: AgentProvider::default(),
+            security_schemes: HashMap::new(),
+            end_points: vec![],
+            capabilities: AgentCapabilities::default(),
+            default_input_modes: vec![],
+            default_output_modes: vec![],
+            skills: vec![],
+            entity_user_id: None,
+            entity_meta: None,
+        }
+    }
+
+    #[test]
+    fn test_mq_protocol_version_accepts_spec_expressions() {
+        for value in [
+            "mqtt:3.1.1",
+            "mqtt:5.*",
+            "mqtt:>=5.0",
+            "kafka:>=2.8 <4.0",
+            "rabbitmq:4.2",
+            "redis:7.0",
+        ] {
+            assert!(
+                validate_mq_protocol_version(value).is_ok(),
+                "应接受 {}",
+                value
+            );
+        }
+
+        for value in ["mqtt", "mqtt:", "foo:1.0", "mqtt:abc", "mqtt:1"] {
+            assert!(
+                validate_mq_protocol_version(value).is_err(),
+                "应拒绝 {}",
+                value
+            );
+        }
+    }
+
+    #[test]
+    fn test_unknown_mq_version_round_trips() {
+        let version = MqProtocolVersion::from_wire("rabbitmq:4.2");
+        assert_eq!(version.as_wire(), "rabbitmq:4.2");
+        assert_eq!(version.protocol_name(), "RabbitMQ");
+        assert_eq!(version.version(), "4.2");
+
+        let json = to_string(&version).unwrap();
+        assert_eq!(json, "\"rabbitmq:4.2\"");
+        let parsed: MqProtocolVersion = from_str(&json).unwrap();
+        assert_eq!(parsed, version);
+    }
+
+    #[test]
+    fn test_endpoint_requires_mutual_tls() {
+        let mut acs = base_acs();
+        acs.end_points = vec![AgentEndPoint {
+            url: "https://localhost:9021/rpc".to_string(),
+            transport: "JSONRPC".to_string(),
+            security: None,
+        }];
+        assert_eq!(
+            acs.validate().unwrap_err(),
+            "endPoint must use mutualTLS security scheme"
+        );
+
+        let mut security = HashMap::new();
+        security.insert("mtls".to_string(), vec![]);
+        acs.end_points[0].security = Some(vec![security]);
+        acs.security_schemes.insert(
+            "mtls".to_string(),
+            SecurityScheme::MutualTls(MutualTlsSecurityScheme {
+                r#type: "mutualTLS".to_string(),
+                description: None,
+                x_ca_challenge_base_url: None,
+            }),
+        );
+        assert!(acs.validate().is_ok());
+    }
+
+    #[test]
+    fn test_endpoint_url_scheme_must_match_transport() {
+        let mut acs = base_acs();
+        let mut security = HashMap::new();
+        security.insert("mtls".to_string(), vec![]);
+
+        acs.security_schemes.insert(
+            "mtls".to_string(),
+            SecurityScheme::MutualTls(MutualTlsSecurityScheme {
+                r#type: "mutualTLS".to_string(),
+                description: None,
+                x_ca_challenge_base_url: None,
+            }),
+        );
+
+        acs.end_points = vec![AgentEndPoint {
+            url: "amqp://localhost:5672/acps".to_string(),
+            transport: "JSONRPC".to_string(),
+            security: Some(vec![security.clone()]),
+        }];
+        assert!(acs.validate().is_err());
+
+        acs.end_points[0].transport = "AMQP".to_string();
+        assert!(acs.validate().is_ok());
+    }
+
+    #[test]
+    fn test_apply_registry_metadata_replaces_placeholder() {
+        let mut acs = base_acs();
+        acs.aic = String::new();
+        acs.end_points = vec![AgentEndPoint {
+            url: "amqps://mq.example.com:5671/acps?inbox=inbox_{AIC}".to_string(),
+            transport: "AMQP".to_string(),
+            security: None,
+        }];
+
+        acs.apply_registry_metadata("1.2.156.3088.1.0001.00001.ABC123.000001.0H9T", true, "2025-03-15T16:30:00+08:00");
+
+        assert_eq!(
+            acs.end_points[0].url,
+            "amqps://mq.example.com:5671/acps?inbox=inbox_1.2.156.3088.1.0001.00001.ABC123.000001.0H9T"
+        );
+        assert!(acs.active);
+    }
+
+    #[test]
+    fn test_duplicate_skill_ids_rejected() {
+        let mut acs = base_acs();
+        let skill = AgentSkill {
+            id: "skill.a".to_string(),
+            name: "技能".to_string(),
+            description: "描述".to_string(),
+            version: "1.0.0".to_string(),
+            tags: vec![],
+            examples: None,
+            input_modes: None,
+            output_modes: None,
+        };
+        acs.skills = vec![skill.clone(), skill];
+        assert!(acs.validate().unwrap_err().contains("技能 ID 重复"));
+    }
+
+    #[test]
+    fn test_acs_hash_is_stable() {
+        let acs = base_acs();
+        assert_eq!(acs.acs_hash().unwrap().len(), 64);
+        assert_eq!(acs.acs_hash().unwrap(), acs.acs_hash().unwrap());
+    }
+
+    #[test]
+    fn test_is_discoverable() {
+        let mut acs = base_acs();
+        assert!(!acs.is_discoverable());
+
+        acs.web_app_url = Some("https://example.com".to_string());
+        assert!(acs.is_discoverable());
+
+        acs.active = false;
+        assert!(!acs.is_discoverable());
     }
 }

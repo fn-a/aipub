@@ -1,13 +1,23 @@
-# Certifier - 证书服务 (CA)
+﻿# Certifier - 证书服务 (CA)
 
 基于 ACME 协议实现的智能体证书颁发服务。
 
+## 当前实现状态
+
+库内已实现 ACME 流程状态机（`create_account_with_eab` → `create_order` →
+`finalize_order`）、EAB 的 HMAC-SHA256 校验、吊销、CRL 与 OCSP 查询。
+
+⚠️ **尚未接入真实密码学**：证书材料由内存 CA 生成显式标注为占位内容的 PEM，
+不解析/校验 CSR 签名，CRL/OCSP 也不是 DER 编码。真实 X.509 签发、JWS 验签与
+nonce 管理属于后续规划（见根 README）。本节以下描述的 HTTP 接口尚未提供。
+
 ## 功能特性
 
-- ✅ X.509 证书颁发
-- ✅ EAB 凭据验证
+- ✅ 证书签发流程（ACME 状态机，占位证书材料）
+- ✅ EAB 凭据验证（HMAC-SHA256）
 - ✅ CRL (证书吊销列表) 管理
 - ✅ OCSP (在线证书状态协议) 响应
+- 🚧 真实 X.509 签发与 CSR 解析
 
 ## 架构设计
 
@@ -50,7 +60,7 @@ POST /acme/new-account
 POST /acme/new-order
 {
   "identifiers": [
-    { "type": "aic", "value": "1.2.156.3088.1.K9.12345.E789ABCDEF.000000000.2353" }
+    { "type": "aic", "value": "1.2.156.3088.1.0001.00001.ABC123.000000.0M9Y" }
   ]
 }
 ```
@@ -91,14 +101,14 @@ POST /acme/new-account
 智能体证书包含以下信息：
 
 ```text
-Subject: CN=1.2.156.3088.1.K9.12345.E789ABCDEF.000000000.2353
-Issuer: CN=AIP CA
+Subject: CN=1.2.156.3088.1.0001.00001.ABC123.000001.176F
+Issuer: CN=Agent Trusted Registration CA
 Not Before: 2025-01-01 00:00:00 UTC
-Not After: 2026-01-01 00:00:00 UTC
+Not After: 2025-02-19 00:00:00 UTC   # 默认 49 天
 Extensions:
-  - Subject Alternative Name: AIC
-  - Key Usage: Digital Signature, Key Encipherment
-  - Extended Key Usage: Server Auth, Client Auth
+  - Subject Alternative Name: URI:acps://{AIC}（以及 ACS certificate.altNames 中声明的 DNS/IP）
+  - Key Usage: Digital Signature, Key Encipherment (critical)
+  - Extended Key Usage: clientAuth 或 serverAuth（二选一，critical）
 ```
 
 ## CRL 和 OCSP
@@ -129,7 +139,9 @@ Content-Type: application/ocsp-request
 port = 8082
 ca_cert_path = "/etc/aip/ca.crt"
 ca_key_path = "/etc/aip/ca.key"
-cert_validity_days = 365
+# 未声明 requestedValidity 时的默认有效期（ATR 规范默认 49 天，上限 1825 天）
+cert_validity_days = 49
+max_cert_validity_days = 1825
 
 [certifier.storage]
 type = "postgres"

@@ -1,7 +1,7 @@
 //! AIP 任务结果
 
-use super::{DataItem, Product, TaskStatus};
 use serde::{Deserialize, Serialize};
+use super::{DataItem, Product, TaskStatus};
 
 /// 任务结果
 ///

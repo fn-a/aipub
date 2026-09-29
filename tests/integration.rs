@@ -1,12 +1,24 @@
-//! 集成测试 - 测试多个协议模块的协作
+//! 集成测试 - 测试多个协议模块与服务组件的协作
+//!
+//! 本文件同时作为各模块测试的入口，声明以下子模块：
+//!
+//! - `protocols`：AIC / ACS / AIP / ADP / ATR / DSP 协议测试
+//! - `registry`：注册服务测试
+//! - `discovery`：发现服务测试
+//! - `certifier`：证书服务测试
+//! - `authorize`：鉴权服务测试
 
+mod authorize;
+mod certifier;
+mod discovery;
 mod protocols;
+mod registry;
 
 /// 测试 AIC 和 ACS 的集成
 #[cfg(test)]
 mod aic_acs_integration {
-    use aipub::protocols::{aic::*, acs::*};
     use std::collections::HashMap;
+    use aipub::protocols::{aic::*, acs::*};
 
     #[test]
     fn test_aic_acs_workflow() {
@@ -71,6 +83,11 @@ mod aip_adp_integration {
         // 2. 模拟发现响应
         let response = DiscoveryResponse::success(DiscoveryResult::new());
         assert!(response.is_success());
+        assert_eq!(discovery_request.limit, Some(5));
+        assert_eq!(
+            discovery_request.query.as_deref(),
+            Some("我需要一个北京美食推荐的智能体")
+        );
 
         // 3. 创建任务命令
         let task_command = TaskCommand::start(
@@ -103,8 +120,9 @@ mod aip_adp_integration {
 /// 测试完整工作流
 #[cfg(test)]
 mod full_workflow {
-    use aipub::protocols::{aic::*, acs::*, aip::*, adp::*};
     use std::collections::HashMap;
+    use serde_json::json;
+    use aipub::protocols::{aic::*, acs::*, aip::*, adp::*};
 
     #[test]
     fn test_complete_agent_workflow() {
@@ -173,7 +191,7 @@ mod full_workflow {
             .with_limit(10)
             .with_filter(
                 DiscoveryFilter::and(vec![
-                    FilterCondition::eq("active", serde_json::json!(true)),
+                    FilterCondition::eq("active", json!(true)),
                     FilterCondition::contains("name", "北京"),
                 ])
             );
@@ -193,6 +211,10 @@ mod full_workflow {
             state_changed_at: "2025-03-15T16:35:00+08:00".to_string(),
             data_items: None,
         };
+
+        assert_eq!(task_command.command, TaskCommandType::Start);
+        assert_eq!(task_command.sender_role, "leader");
+        assert_eq!(task_command.sender_id, "leader-001");
 
         let task_result = TaskResult::new(
             "result-001".to_string(),

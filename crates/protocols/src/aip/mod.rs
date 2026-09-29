@@ -17,15 +17,19 @@
 //! 1. **点对点模式**: Leader 与 Partner 直接通过 JSON-RPC 交互
 //! 2. **群组模式**: Leader 通过消息队列与多个 Partner 协作
 
+use serde::{Deserialize, Serialize};
+
 mod models;
 mod command;
 mod result;
+mod rpc;
+mod task;
 
 pub use models::*;
 pub use command::*;
 pub use result::*;
-
-use serde::{Deserialize, Serialize};
+pub use rpc::*;
+pub use task::*;
 
 /// 任务状态枚举
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -71,6 +75,71 @@ impl TaskState {
     /// 判断任务是否处于活跃状态
     pub fn is_active(&self) -> bool {
         !self.is_terminal()
+    }
+
+    /// 线上取值
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            TaskState::Accepted => "accepted",
+            TaskState::Working => "working",
+            TaskState::AwaitingInput => "awaiting-input",
+            TaskState::AwaitingCompletion => "awaiting-completion",
+            TaskState::Completed => "completed",
+            TaskState::Canceled => "canceled",
+            TaskState::Failed => "failed",
+            TaskState::Rejected => "rejected",
+        }
+    }
+
+    /// 由线上取值解析
+    pub fn from_str(value: &str) -> Option<Self> {
+        match value {
+            "accepted" => Some(TaskState::Accepted),
+            "working" => Some(TaskState::Working),
+            "awaiting-input" => Some(TaskState::AwaitingInput),
+            "awaiting-completion" => Some(TaskState::AwaitingCompletion),
+            "completed" => Some(TaskState::Completed),
+            "canceled" => Some(TaskState::Canceled),
+            "failed" => Some(TaskState::Failed),
+            "rejected" => Some(TaskState::Rejected),
+            _ => None,
+        }
+    }
+
+    /// 状态机允许的流转
+    ///
+    /// 依据 `ACPs-spec-AIP-v02.01`：
+    /// - `accepted` -> `working` / `canceled`
+    /// - `working` -> `awaiting-input` / `awaiting-completion` / `failed` / `canceled`
+    /// - `awaiting-input` -> `working` / `canceled`
+    /// - `awaiting-completion` -> `completed` / `working` / `canceled`
+    /// - 终态不可再流转（`rejected` 由新建任务时直接指定）
+    pub fn can_transition_to(&self, next: TaskState) -> bool {
+        if self.is_terminal() {
+            return false;
+        }
+        if *self == next {
+            return true;
+        }
+
+        match self {
+            TaskState::Accepted => matches!(next, TaskState::Working | TaskState::Canceled),
+            TaskState::Working => matches!(
+                next,
+                TaskState::AwaitingInput
+                    | TaskState::AwaitingCompletion
+                    | TaskState::Failed
+                    | TaskState::Canceled
+            ),
+            TaskState::AwaitingInput => {
+                matches!(next, TaskState::Working | TaskState::Canceled)
+            }
+            TaskState::AwaitingCompletion => matches!(
+                next,
+                TaskState::Completed | TaskState::Working | TaskState::Canceled
+            ),
+            _ => false,
+        }
     }
 }
 

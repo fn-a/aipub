@@ -1,5 +1,6 @@
 //! ACS 安全方案定义
 
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 /// 安全方案联合类型
@@ -130,7 +131,7 @@ pub struct OAuth2Flow {
     
     /// 可用的OAuth2作用域
     #[serde(default)]
-    pub scopes: std::collections::HashMap<String, String>,
+    pub scopes: HashMap<String, String>,
 }
 
 /// OAuth2 流程集合

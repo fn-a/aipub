@@ -22,15 +22,19 @@
 //!
 //! ADP 支持跨域发现服务转发，通过转发链实现跨域智能体发现。
 
+use serde::{Deserialize, Serialize};
+
 mod models;
 mod filter;
 mod constants;
+mod errors;
+mod validators;
 
 pub use models::*;
 pub use filter::*;
 pub use constants::*;
-
-use serde::{Deserialize, Serialize};
+pub use errors::*;
+pub use validators::*;
 
 /// 查询类型
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -52,6 +56,80 @@ pub enum QueryType {
 impl Default for QueryType {
     fn default() -> Self {
         QueryType::Explicit
+    }
+}
+
+impl QueryType {
+    /// 查询类型的线上取值
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            QueryType::Explicit => "explicit",
+            QueryType::Exploratory => "exploratory",
+            QueryType::Trending => "trending",
+            QueryType::Filtered => "filtered",
+        }
+    }
+
+    /// 由线上取值解析查询类型
+    pub fn from_str(value: &str) -> Option<Self> {
+        match value.to_lowercase().as_str() {
+            "explicit" => Some(QueryType::Explicit),
+            "exploratory" => Some(QueryType::Exploratory),
+            "trending" => Some(QueryType::Trending),
+            "filtered" => Some(QueryType::Filtered),
+            _ => None,
+        }
+    }
+
+    /// 是否为「明确查询」（必须提供 query）
+    pub fn requires_query(&self) -> bool {
+        matches!(self, QueryType::Explicit)
+    }
+
+    /// 是否为「过滤查询」（忽略 query，仅使用 filter）
+    pub fn ignores_query(&self) -> bool {
+        matches!(self, QueryType::Filtered)
+    }
+}
+
+/// 过滤条件的逻辑关系
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FilterLogic {
+    /// 全部满足（默认）
+    And,
+
+    /// 满足任意一个
+    Or,
+
+    /// 取反
+    Not,
+}
+
+impl Default for FilterLogic {
+    fn default() -> Self {
+        FilterLogic::And
+    }
+}
+
+impl FilterLogic {
+    /// 线上取值
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            FilterLogic::And => "and",
+            FilterLogic::Or => "or",
+            FilterLogic::Not => "not",
+        }
+    }
+
+    /// 由线上取值解析
+    pub fn from_str(value: &str) -> Option<Self> {
+        match value.to_lowercase().as_str() {
+            "and" => Some(FilterLogic::And),
+            "or" => Some(FilterLogic::Or),
+            "not" => Some(FilterLogic::Not),
+            _ => None,
+        }
     }
 }
 

@@ -1,8 +1,9 @@
-//! ADP 数据模型
+﻿//! ADP 数据模型
 
-use super::{constants::*, DiscoveryFilter, QueryType};
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use super::{constants::*, DiscoveryFilter};
 
 /// 发现请求
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -211,7 +212,7 @@ impl DiscoveryResponse {
 pub struct DiscoveryResult {
     /// ACS 数据映射（AIC -> ACS）
     #[serde(rename = "acsMap")]
-    pub acs_map: std::collections::HashMap<String, Value>,
+    pub acs_map: HashMap<String, Value>,
     
     /// 发现到的候选智能体列表
     pub agents: Vec<DiscoveryAgentGroup>,
@@ -225,7 +226,7 @@ impl DiscoveryResult {
     /// 创建新的发现结果
     pub fn new() -> Self {
         Self {
-            acs_map: std::collections::HashMap::new(),
+            acs_map: HashMap::new(),
             agents: vec![],
             routes: None,
         }

@@ -1,4 +1,4 @@
-# AIP 智能体互联协议 (Agent Interconnection Protocol)
+﻿# AIP 智能体互联协议 (Agent Interconnection Protocol)
 
 **中文** | [English](README.en.md)
 
@@ -34,6 +34,28 @@
 cargo add aipub
 ```
 
+### 基础流程端到端演示
+
+仓库内置了一条完整可运行的端到端链路（`examples/e2eflow.rs`）：
+
+```bash
+cargo run --example e2eflow
+```
+
+覆盖的步骤：
+
+```text
+ACS 注册 -> AIC 分配（本体/实体） -> 变更流同步（DSP） -> 发现查询（自然语言/结构化）
+        -> 跨域转发 -> EAB 签发与一次性消费 -> ACME 账号绑定 -> 订单/签发证书
+        -> 群组 ACL 与消息队列鉴权 -> AIP 任务下发与结果回传 -> 注销/停用/吊销
+```
+
+对应的集成测试在 `tests/e2eflow.rs`，可直接断言每一步的结果：
+
+```bash
+cargo test --test e2eflow
+```
+
 ### 基本使用
 
 ```rust
@@ -44,7 +66,7 @@ use aipub::{
 };
 
 // 验证 AIC
-let aic = "1.2.156.3088.1.K9.ABCDEF.123456789.000000000.ABCD";
+let aic = "1.2.156.3088.1.0001.00001.ABC123.000000.0M9Y";
 if let Ok(info) = validate_aic_format(aic) {
    println!("AIC 有效: {}", info);
    println!("是否为本体: {}", info.is_ontology());
@@ -59,7 +81,10 @@ let request = DiscoveryRequest::new()
 ### 运行示例
 
 ```bash
-# 运行基本示例
+# 运行基础流程端到端演示
+cargo run --example e2eflow
+
+# 运行协议数据模型示例
 cargo run --example basic
 
 # 运行测试
@@ -74,25 +99,31 @@ aipub/
 ├── src/
 │   └── lib.rs                 # 统一导出入口 ✅
 ├── examples/
-│   └── basic.rs               # 基本使用示例 ✅
-├── tests/                     # 测试用例 ✅
+│   ├── basic.rs               # 协议数据模型示例 ✅
+│   └── e2eflow.rs             # 基础流程端到端演示 ✅
+├── tests/                     # 测试用例
+│   ├── integration.rs         # 测试入口：声明各模块测试 + 跨模块集成流程
+│   ├── e2eflow.rs             # 基础流程端到端测试
+│   ├── protocols/             # 协议测试（aic / acs / aip / adp / atr / dsp）
+│   ├── registry/              # 注册服务测试
+│   ├── discovery/             # 发现服务测试
+│   ├── certifier/             # 证书服务测试
+│   └── authorize/             # 鉴权服务测试
 └── crates/
     ├── protocols/             # 核心协议库 ✅
     │   ├── src/
-    │   │   ├── aic/           # 智能体身份码
+    │   │   ├── aic/           # 智能体身份码（含 CRC-16/CCITT-FALSE 与生成器）
     │   │   ├── acs/           # 智能体能力描述
-    │   │   ├── aip/           # 智能体交互协议
-    │   │   └── adp/           # 智能体发现协议
+    │   │   ├── aip/           # 智能体交互协议（含任务状态机与 JSON-RPC）
+    │   │   ├── adp/           # 智能体发现协议（含过滤求值与转发校验）
+    │   │   ├── atr/           # 信任注册支撑（EAB HMAC、证书常量）
+    │   │   └── dsp/           # 数据同步变更流
     │   └── README.md
     │
-    ├── discovery/             # 发现服务框架 🚧
-    │   └── README.md
-    ├── registry/              # 注册服务框架 🚧
-    │   └── README.md
-    ├── certifier/             # 证书服务框架 🚧
-    │   └── README.md
-    └── authorize/             # 鉴权服务框架 🚧
-        └── README.md
+    ├── discovery/             # 发现服务（内存存储 + 关键词匹配 + 转发）✅
+    ├── registry/              # 注册服务（AIC 分配 + ACS 校验 + EAB + 变更流）✅
+    ├── certifier/             # 证书服务（ACME 状态机 + CRL/OCSP；X.509 签发待接入）✅
+    └── authorize/             # 鉴权服务（MQ 认证 + 群组 ACL）✅
 ```
 
 ## 协议规范
@@ -162,35 +193,48 @@ ADP (Agent Discovery Protocol) 定义了智能体发现流程：
 - ✅ **详细文档**: 每个模块都有详细的文档和示例
 - ✅ **测试覆盖**: 核心功能都有完整的测试覆盖
 
+## 完成功能
+
+### 基础流程拉通
+
+- ✅ **协议层**：AIC 生成与校验（CRC-16/CCITT-FALSE）、ACS 校验规则、
+  ADP 35 种过滤运算符求值、AIP 任务状态机与 JSON-RPC 模型、
+  ATR（EAB HMAC）与 DSP（变更流）
+- ✅ **Registry**：AIC 分配（本体/实体/派生实体）、ACS 校验与身份元数据改写、
+  EAB 签发与一次性消费、变更流
+- ✅ **Discovery**：内存存储、关键词匹配与排名、四种查询模式、
+  结构化过滤、跨域转发（环路/深度/扇出校验 + 结果聚合）、变更流幂等应用
+- ✅ **Authorize**：RabbitMQ 认证后端判定规则、群组 ACL、邀请/加入/移除/解散
+- ✅ **Certifier**：ACME 流程状态机（account/order/finalize）、EAB 校验、
+  吊销、CRL、OCSP
+- ✅ **端到端**：`examples/e2eflow.rs` + `tests/e2eflow.rs`
+
 ## 后续规划
 
 ### 短期目标
 
-1. 完善 Discovery 服务实现
+1. Discovery 服务生产化
    - 实现具体的存储后端（PostgreSQL + Redis）
-   - 实现关键词匹配器
-   - 实现 HTTP API 接口
+   - 实现 HTTP API 接口（`POST /discover`）
 
-2. 完善 Registry 服务实现
+2. Registry 服务生产化
    - 实现具体的存储后端
-   - 实现 EAB 凭据验证
+   - 实现 ACS 的 JSON Schema 完整校验与账户/审批流程
    - 实现 HTTP API 接口
 
 ### 中期目标
 
-3. 完善 Certifier 服务实现
-   - 集成 OpenSSL 或 rustls
-   - 实现 ACME 协议
-   - 实现证书颁发和吊销
+3. Certifier 接入真实密码学
+   - 集成 rustls / rcgen（或 OpenSSL）实现 CSR 解析与 X.509 签发
+   - 实现真实的 DER 格式 CRL / OCSP 响应
+   - 实现 ACME 的 JWS 验签与 nonce 管理
 
-4. 完善 Authorize 服务实现
-   - 实现 ACL 规则引擎
-   - 实现群组管理
-   - 实现消息队列认证后端
-
-5. 向量相似度匹配
+4. 向量相似度匹配
    - 集成向量数据库（如 Qdrant/Milvus）
    - 实现语义相似度匹配
+
+5. 服务进程化
+   - 为四个服务提供可独立启动的 HTTP 服务与配置加载
 
 ### 长期目标
 
@@ -198,14 +242,6 @@ ADP (Agent Discovery Protocol) 定义了智能体发现流程：
 7. 消息队列集成（RabbitMQ, Redis Streams, Kafka）
 8. 监控和可观测性（Prometheus, OpenTelemetry）
 9. 部署和运维支持（Docker, Kubernetes）
-
-## 无法直接转换的部分
-
-以下部分由于 Rust 的限制，使用了伪代码和详细注释：
-
-1. **动态类型处理**: 使用 `serde_json::Value` + 注释说明
-2. **异步生成器**: 使用 `Stream` trait + 注释说明
-3. **元编程**: 使用过程宏 + 注释说明
 
 ## 参考资源
 

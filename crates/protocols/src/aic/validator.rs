@@ -1,7 +1,6 @@
-//! AIC 完整验证器（包含 CRC 校验）
+﻿//! AIC 完整验证器（包含 CRC 校验）
 
 use super::{validate_aic_format, AicInfo};
-use sha2::{Sha256, Digest};
 
 /// AIC 完整验证器（包含 CRC 校验）
 ///
@@ -10,16 +9,16 @@ use sha2::{Sha256, Digest};
 /// # 示例
 ///
 /// ```rust
-/// use aipub::protocols::aic::AicValidator;
+/// use protocols::aic::{AicValidator, AIC_OID_PREFIX};
 ///
-/// let validator = AicValidator::new(Some(b"\x12\x34".to_vec()));
-/// let aic = "1.2.156.3088.1.K9.12345.E789ABCDEF.000000000.2353";
+/// let mut validator = AicValidator::new(Some(b"\x12\x34".to_vec()));
 ///
-/// if validator.validate(aic) {
-///     println!("AIC 有效");
-/// } else {
-///     println!("AIC 无效: {}", validator.last_error().unwrap());
-/// }
+/// // 由本体码（1-9 级）计算校验码，再拼出完整 AIC
+/// let body = format!("{}.1.K9.ABCDEF.123456789.000000000", AIC_OID_PREFIX);
+/// let checksum = validator.calculate_checksum(&body).unwrap();
+/// let aic = format!("{}.{}", body, checksum);
+///
+/// assert!(validator.validate(&aic, true));
 /// ```
 pub struct AicValidator {
     /// CRC 计算的盐值
@@ -81,6 +80,10 @@ impl AicValidator {
     
     /// 计算 CRC 校验码
     ///
+    /// 采用 CRC-16/CCITT-FALSE（`poly=0x1021`、`init=0xFFFF`、`refin/refout=false`、
+    /// `xorout=0x0000`），输入为本体码（1-9 级）规范化后的 ASCII 字节序列追加 SALT，
+    /// 输出为固定 4 位 Base36 校验码。未配置 SALT 时返回 None。
+    ///
     /// # 参数
     ///
     /// - `body_1_9`: AIC 的 1-9 级（本体码）
@@ -90,22 +93,14 @@ impl AicValidator {
     /// 4 位 Base36 校验码，未配置 SALT 时返回 None
     pub fn calculate_checksum(&self, body_1_9: &str) -> Option<String> {
         let salt = self.salt.as_ref()?;
-        
-        let normalized = body_1_9
-            .chars()
-            .filter(|c| !c.is_whitespace())
-            .collect::<String>()
-            .to_uppercase();
-        
-        let mut hasher = Sha256::new();
-        hasher.update(normalized.as_bytes());
-        hasher.update(salt);
-        let hash = hasher.finalize();
-        
-        // 取前 2 字节作为 CRC
-        let crc = u16::from_be_bytes([hash[0], hash[1]]);
-        
-        // 转换为 Base36 (4位)
+
+        let normalized = super::utils::normalize_aic(body_1_9);
+
+        let mut data = normalized.into_bytes();
+        data.extend_from_slice(salt);
+
+        let crc = super::utils::crc16_ccitt_false(&data);
+
         Some(super::utils::base36_encode(crc as u64, 4))
     }
     

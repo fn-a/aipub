@@ -9,6 +9,9 @@
 //! - CRL (证书吊销列表) 管理
 //! - OCSP (在线证书状态协议) 响应
 
+use thiserror::Error;
+use protocols::atr::{DEFAULT_CERT_VALIDITY_DAYS, MAX_CERT_VALIDITY_DAYS, CA_ISSUER_LABEL};
+
 pub mod service;
 pub mod certificate;
 pub mod crl;
@@ -19,7 +22,6 @@ pub use certificate::*;
 pub use crl::*;
 pub use ocsp::*;
 
-use thiserror::Error;
 
 /// Certifier 服务错误类型
 #[derive(Debug, Error)]
@@ -54,6 +56,12 @@ pub struct CertifierConfig {
     
     /// 证书有效期（天）
     pub cert_validity_days: u32,
+
+    /// 证书有效期上限（天）
+    pub max_cert_validity_days: u32,
+
+    /// 签发者名称
+    pub issuer_label: String,
 }
 
 impl Default for CertifierConfig {
@@ -62,7 +70,10 @@ impl Default for CertifierConfig {
             port: 8082,
             ca_cert_path: "ca.crt".to_string(),
             ca_key_path: "ca.key".to_string(),
-            cert_validity_days: 365,
+            // 与 ATR 规范一致：未声明 requestedValidity 时默认 49 天
+            cert_validity_days: DEFAULT_CERT_VALIDITY_DAYS,
+            max_cert_validity_days: MAX_CERT_VALIDITY_DAYS,
+            issuer_label: CA_ISSUER_LABEL.to_string(),
         }
     }
 }

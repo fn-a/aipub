@@ -7,6 +7,10 @@ license.workspace = true
 repository.workspace = true
 description = "Agent discovery service based on the ADP (Agent Discovery Protocol)"
 
+[lib]
+name = "discovery"
+path = "src/lib.rs"
+
 [dependencies]
 protocols = { workspace = true }
 serde = { workspace = true }

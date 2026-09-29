@@ -1,8 +1,8 @@
-//! AIC 工具函数
+﻿//! AIC 工具函数
 
-use super::constants::BASE36_ALPHABET;
-use regex::Regex;
 use std::collections::HashMap;
+use regex::Regex;
+use super::constants::BASE36_ALPHABET;
 
 lazy_static::lazy_static! {
     /// Base36 字符到索引的映射
@@ -31,6 +31,56 @@ pub fn is_base36(s: &str) -> bool {
     RE_BASE36.is_match(s)
 }
 
+/// CRC-16/CCITT-FALSE 校验算法
+///
+/// 参数：`poly=0x1021`、`init=0xFFFF`、`refin/refout=false`、`xorout=0x0000`。
+///
+/// AIC 第 10 级校验码即由本体码（1-9 级）的 ASCII 字节序列追加 SALT 后，
+/// 经本算法计算，再以 Base36 编码为固定 4 位。
+///
+/// # 示例
+///
+/// ```rust
+/// use protocols::aic::crc16_ccitt_false;
+///
+/// // CRC-16/CCITT-FALSE("123456789") == 0x29B1
+/// assert_eq!(crc16_ccitt_false(b"123456789"), 0x29B1);
+/// ```
+pub fn crc16_ccitt_false(data: &[u8]) -> u16 {
+    let mut crc: u16 = 0xFFFF;
+    for &byte in data {
+        crc ^= (byte as u16) << 8;
+        for _ in 0..8 {
+            crc = if crc & 0x8000 != 0 {
+                (crc << 1) ^ 0x1021
+            } else {
+                crc << 1
+            };
+        }
+    }
+    crc
+}
+
+/// 将 u128 编码为固定长度 Base36 字符串（超出长度时截取低位，不足左侧补 0）
+pub fn base36_encode_u128(num: u128, length: usize) -> String {
+    if length == 0 {
+        return base36_encode(num as u64, 0);
+    }
+
+    let mut digits = vec![0u8; length];
+    let mut n = num;
+    let modulus = 36u128;
+    for i in (0..length).rev() {
+        digits[i] = (n % modulus) as u8;
+        n /= modulus;
+    }
+
+    digits
+        .into_iter()
+        .map(|d| BASE36_ALPHABET.chars().nth(d as usize).unwrap())
+        .collect()
+}
+
 /// 将非负整数编码为 Base36 字符串（大写）
 ///
 /// # 参数
@@ -49,7 +99,7 @@ pub fn is_base36(s: &str) -> bool {
 /// # 示例
 ///
 /// ```rust
-/// use aipub::protocols::aic::base36_encode;
+/// use protocols::aic::base36_encode;
 ///
 /// assert_eq!(base36_encode(0, 0), "0");
 /// assert_eq!(base36_encode(35, 0), "Z");
@@ -98,7 +148,7 @@ pub fn base36_encode(num: u64, length: usize) -> String {
 /// # 示例
 ///
 /// ```rust
-/// use aipub::protocols::aic::base36_decode;
+/// use protocols::aic::base36_decode;
 ///
 /// assert_eq!(base36_decode("0").unwrap(), 0);
 /// assert_eq!(base36_decode("Z").unwrap(), 35);

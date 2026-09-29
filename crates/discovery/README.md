@@ -2,6 +2,15 @@
 
 基于 ADP (Agent Discovery Protocol) 协议实现的智能体发现服务。
 
+## 当前实现状态
+
+库内已实现：内存存储（含变更流版本幂等应用）、关键词匹配与排名、
+四种查询模式（explicit / exploratory / trending / filtered）、
+35 种过滤运算符与 AND/OR/NOT 组合、跨域转发（环路/深度/扇出校验 + 结果聚合）。
+
+⚠️ 存储为内存实现，向量检索与语义匹配尚未接入；本节以下描述的
+HTTP 接口与 PostgreSQL/Redis/向量库方案属于后续规划。
+
 ## 功能特性
 
 - ✅ 智能体能力查询和匹配

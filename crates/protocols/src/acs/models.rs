@@ -1,8 +1,9 @@
 //! ACS 核心数据模型
 
-use super::{MqProtocolVersion, SecurityScheme};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use serde_json::{Error, Value, to_string, from_str, to_value, from_value};
+use super::{MqProtocolVersion, SecurityScheme};
 
 /// 智能体能力描述规范的根对象
 ///
@@ -108,28 +109,28 @@ pub struct AgentCapabilitySpec {
     /// 实体的额外元数据
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "entityMeta")]
-    pub entity_meta: Option<HashMap<String, serde_json::Value>>,
+    pub entity_meta: Option<HashMap<String, Value>>,
 }
 
 impl AgentCapabilitySpec {
     /// 序列化为 JSON 字符串
-    pub fn to_json(&self) -> Result<String, serde_json::Error> {
-        serde_json::to_string(self)
+    pub fn to_json(&self) -> Result<String, Error> {
+        to_string(self)
     }
     
     /// 从 JSON 字符串反序列化
-    pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
-        serde_json::from_str(json)
+    pub fn from_json(json: &str) -> Result<Self, Error> {
+        from_str(json)
     }
     
     /// 序列化为 JSON Value
-    pub fn to_value(&self) -> Result<serde_json::Value, serde_json::Error> {
-        serde_json::to_value(self)
+    pub fn to_value(&self) -> Result<Value, Error> {
+        to_value(self)
     }
     
     /// 从 JSON Value 反序列化
-    pub fn from_value(value: serde_json::Value) -> Result<Self, serde_json::Error> {
-        serde_json::from_value(value)
+    pub fn from_value(value: Value) -> Result<Self, Error> {
+        from_value(value)
     }
 }
 

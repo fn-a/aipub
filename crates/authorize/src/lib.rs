@@ -9,6 +9,8 @@
 //! - 智能体权限管理
 //! - 群组邀请和加入
 
+use thiserror::Error;
+
 pub mod service;
 pub mod acl;
 pub mod group;
@@ -17,7 +19,6 @@ pub use service::*;
 pub use acl::*;
 pub use group::*;
 
-use thiserror::Error;
 
 /// Authorize 服务错误类型
 #[derive(Debug, Error)]
@@ -49,6 +50,15 @@ pub struct AuthorizeConfig {
     
     /// 默认权限
     pub default_permission: String,
+
+    /// 共享 vhost（RabbitMQ 侧所有群组流量所在的 vhost）
+    pub shared_vhost: String,
+
+    /// 群组 ACL 缓存/条目 TTL（秒）
+    pub acl_ttl_seconds: u64,
+
+    /// 群组邀请有效期（秒）
+    pub invitation_ttl_seconds: i64,
 }
 
 impl Default for AuthorizeConfig {
@@ -57,6 +67,9 @@ impl Default for AuthorizeConfig {
             port: 8083,
             enable_group: true,
             default_permission: "read".to_string(),
+            shared_vhost: acl::SHARED_VHOST.to_string(),
+            acl_ttl_seconds: 604800,
+            invitation_ttl_seconds: group::DEFAULT_INVITATION_TIMEOUT_SECONDS,
         }
     }
 }

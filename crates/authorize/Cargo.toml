@@ -7,6 +7,10 @@ license.workspace = true
 repository.workspace = true
 description = "Authentication and group ACL service for group-based agent interaction patterns"
 
+[lib]
+name = "authorize"
+path = "src/lib.rs"
+
 [dependencies]
 protocols = { workspace = true }
 serde = { workspace = true }
@@ -18,3 +22,5 @@ anyhow = { workspace = true }
 chrono = { workspace = true }
 uuid = { workspace = true }
 tracing = { workspace = true }
+regex = { workspace = true }
+lazy_static = "^1.5"

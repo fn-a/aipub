@@ -1,8 +1,8 @@
-//! AIP 任务命令
+﻿//! AIP 任务命令
 
-use super::{DataItem, Message, TaskCommandType};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use super::{DataItem, TaskCommandType};
 
 /// 任务命令
 ///

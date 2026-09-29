@@ -44,7 +44,7 @@ use aipub::{
 };
 
 // Validate AIC
-let aic = "1.2.156.3088.1.K9.ABCDEF.123456789.000000000.ABCD";
+let aic = "1.2.156.3088.1.0001.00001.ABC123.000000.0M9Y";
 if let Ok(info) = validate_aic_format(aic) {
    println!("AIC valid: {}", info);
    println!("Is ontology: {}", info.is_ontology());
@@ -59,11 +59,27 @@ let request = DiscoveryRequest::new()
 ### Run Examples
 
 ```bash
-# Run basic example
+# Run the end-to-end basic flow demo
+cargo run --example e2eflow
+
+# Run the protocol data model example
 cargo run --example basic
 
 # Run tests
 cargo test
+```
+
+## Basic End-to-End Flow
+
+`examples/e2eflow.rs` wires the whole chain in a single process, and
+`tests/e2eflow.rs` asserts every step of it:
+
+```text
+ACS registration -> AIC allocation (ontology/entity) -> change-feed sync (DSP)
+   -> discovery (natural language / structured filter) -> cross-domain forwarding
+   -> EAB issuance and single-use consumption -> ACME account binding
+   -> order / certificate issuance -> group ACL & MQ authorization
+   -> AIP task dispatch and result return -> unregister / deactivate / revoke
 ```
 
 ## Project Structure
@@ -74,25 +90,31 @@ aipub/
 ├── src/
 │   └── lib.rs                 # Unified export entry ✅
 ├── examples/
-│   └── basic.rs               # Basic usage example ✅
-├── tests/                     # Test cases ✅
+│   ├── basic.rs               # Protocol data model example ✅
+│   └── e2eflow.rs             # Basic end-to-end flow demo ✅
+├── tests/                     # Test cases
+│   ├── integration.rs         # Test entry: declares module tests + cross-module flows
+│   ├── e2eflow.rs             # Basic end-to-end flow test
+│   ├── protocols/             # Protocol tests (aic / acs / aip / adp / atr / dsp)
+│   ├── registry/              # Registry service tests
+│   ├── discovery/             # Discovery service tests
+│   ├── certifier/             # Certifier service tests
+│   └── authorize/             # Authorize service tests
 └── crates/
     ├── protocols/             # Core protocol library ✅
     │   ├── src/
-    │   │   ├── aic/           # Agent Identity Code
+    │   │   ├── aic/           # Agent Identity Code (CRC-16/CCITT-FALSE + generator)
     │   │   ├── acs/           # Agent Capability Specification
-    │   │   ├── aip/           # Agent Interaction Protocol
-    │   │   └── adp/           # Agent Discovery Protocol
+    │   │   ├── aip/           # Agent Interaction Protocol (task state machine + JSON-RPC)
+    │   │   ├── adp/           # Agent Discovery Protocol (filter evaluation + forwarding guards)
+    │   │   ├── atr/           # Trust registry support (EAB HMAC, certificate constants)
+    │   │   └── dsp/           # Data sync change feed
     │   └── README.md
     │
-    ├── discovery/             # Discovery service framework 🚧
-    │   └── README.md
-    ├── registry/              # Registry service framework 🚧
-    │   └── README.md
-    ├── certifier/             # Certifier service framework 🚧
-    │   └── README.md
-    └── authorize/             # Authorize service framework 🚧
-        └── README.md
+    ├── discovery/             # Discovery service (memory storage + keyword matcher + forwarder) ✅
+    ├── registry/              # Registry service (AIC allocation + ACS validation + EAB + change feed) ✅
+    ├── certifier/             # Certifier service (ACME state machine + CRL/OCSP; real X.509 pending) ✅
+    └── authorize/             # Authorize service (MQ auth + group ACL) ✅
 ```
 
 ## Protocol Specifications
@@ -162,35 +184,50 @@ ADP (Agent Discovery Protocol) defines the agent discovery process:
 - ✅ **Detailed Documentation**: Each module has detailed documentation and examples
 - ✅ **Test Coverage**: Complete test coverage for core functionality
 
+## Completed functions
+
+### Basic flow wired end to end
+
+- ✅ **Protocol layer**: AIC generation/validation (CRC-16/CCITT-FALSE), ACS validation
+  rules, 35 ADP filter operators, AIP task state machine + JSON-RPC models,
+  ATR (EAB HMAC) and DSP (change feed)
+- ✅ **Registry**: AIC allocation (ontology/entity/derived entity), ACS validation and
+  identity metadata rewrite, EAB issuance and single-use consumption, change feed
+- ✅ **Discovery**: in-memory storage, keyword matching and ranking, four query modes,
+  structured filters, cross-domain forwarding (loop/depth/fanout guards + aggregation),
+  idempotent change-feed application
+- ✅ **Authorize**: RabbitMQ auth-backend decision rules, group ACL,
+  invite/join/remove/disband
+- ✅ **Certifier**: ACME flow state machine (account/order/finalize), EAB verification,
+  revocation, CRL, OCSP
+- ✅ **End to end**: `examples/e2eflow.rs` and `tests/e2eflow.rs`
+
 ## Future Plans
 
 ### Short-term Goals
 
-1. Complete Discovery service implementation
+1. Productionize Discovery
    - Implement concrete storage backend (PostgreSQL + Redis)
-   - Implement keyword matcher
-   - Implement HTTP API interface
+   - Implement HTTP API interface (`POST /discover`)
 
-2. Complete Registry service implementation
+2. Productionize Registry
    - Implement concrete storage backend
-   - Implement EAB credential verification
+   - Full JSON Schema validation for ACS plus account/approval flow
    - Implement HTTP API interface
 
 ### Mid-term Goals
 
-3. Complete Certifier service implementation
-   - Integrate OpenSSL or rustls
-   - Implement ACME protocol
-   - Implement certificate issuance and revocation
+3. Real cryptography in Certifier
+   - Integrate rustls / rcgen (or OpenSSL) for CSR parsing and X.509 issuance
+   - Emit real DER CRL and OCSP responses
+   - Implement ACME JWS verification and nonce management
 
-4. Complete Authorize service implementation
-   - Implement ACL rule engine
-   - Implement group management
-   - Implement message queue authentication backend
-
-5. Vector similarity matching
+4. Vector similarity matching
    - Integrate vector database (e.g., Qdrant/Milvus)
    - Implement semantic similarity matching
+
+5. Runnable service processes
+   - Provide independently runnable HTTP services and config loading for all four services
 
 ### Long-term Goals
 
@@ -198,14 +235,6 @@ ADP (Agent Discovery Protocol) defines the agent discovery process:
 7. Message queue integration (RabbitMQ, Redis Streams, Kafka)
 8. Monitoring and observability (Prometheus, OpenTelemetry)
 9. Deployment and operations support (Docker, Kubernetes)
-
-## Parts Not Directly Convertible
-
-The following parts use pseudocode and detailed comments due to Rust limitations:
-
-1. **Dynamic Type Handling**: Use `serde_json::Value` + comment explanation
-2. **Async Generators**: Use `Stream` trait + comment explanation
-3. **Metaprogramming**: Use procedural macros + comment explanation
 
 ## References
 

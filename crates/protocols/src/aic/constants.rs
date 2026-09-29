@@ -15,3 +15,18 @@ pub const SEGMENT_CONSTRAINTS: [(usize, usize); 6] = [
     (1, 9),   // Instance SN (第9级)
     (4, 4),   // CRC (第10级)
 ];
+
+/// 第 5 级默认版本号（Base36 单字符）
+pub const AIC_PROTOCOL_VERSION: &str = "1";
+
+/// 第 6 级默认 ARSP 注册服务商序号
+pub const DEFAULT_ARSP_CODE: &str = "0001";
+
+/// 第 7 级默认 Vendor 供应商序号
+pub const DEFAULT_VENDOR_CODE: &str = "00001";
+
+/// 第 8 级默认本体序列号长度（规范允许 1~9 位）
+pub const DEFAULT_ONTOLOGY_SERIAL_LEN: usize = 6;
+
+/// 第 9 级默认实例序列号长度（规范允许 1~9 位）
+pub const DEFAULT_INSTANCE_SERIAL_LEN: usize = 6;
